@@ -46,8 +46,8 @@ void hw_suspend(int msec_10)
             return;
         }
     }
-    puts("all not ready.");	//if no ready task at all
-    puts("waiting...");
+    // puts("all not ready.");	//if no ready task at all
+    // puts("waiting...");
     swapcontext(&(suspendtask->context), &Simulator);   //now:WAITING
     return;
 }
@@ -153,10 +153,8 @@ void addToList(int priority)
         }
     } else { // L
         newtask->priority = 'L';
-        if(Llisthead == NULL) { //add to Llist
+        if(Llisthead == NULL)  //add to Llist
             Llisthead = newtask;
-            puts("Lhead");
-        }
         if(Llisttail == NULL)
             Llisttail = newtask;
         else {
@@ -182,7 +180,7 @@ void simulator()
     // puts("[simu mode]");
 
     if(Hlisthead == NULL && Llisthead==NULL) {	//empty
-        puts("queue is empty.");
+        // puts("queue is empty.");
         setcontext(&Shell);
         return;
     }
@@ -206,7 +204,7 @@ void simulator()
         if(itr->state == TASK_READY) {  //find the first ready task and run it
             itr->state = TASK_RUNNING;
             nowtask = itr;
-            printf("pid %d %s in H ready->run",nowtask->pid,nowtask->taskname);
+            // printf("pid %d %s in H ready->run",nowtask->pid,nowtask->taskname);
             if(nowtask->tq==10) {
                 setitimer(ITIMER_REAL, &tick, NULL);
             } else {
@@ -227,7 +225,7 @@ void simulator()
         if(itr->state == TASK_READY) {  //find the first ready task and run it
             itr->state = TASK_RUNNING;
             nowtask = itr;
-            printf("pid %d %s in H ready->run\n",nowtask->pid,nowtask->taskname);
+            // printf("pid %d %s in H ready->run\n",nowtask->pid,nowtask->taskname);
             if(nowtask->tq==10) {
                 setitimer(ITIMER_REAL, &tick, NULL);
             } else {
@@ -247,7 +245,7 @@ void simulator()
         prevnowtask = itr;
         if(itr->state == TASK_WAITING) {    //found one waiting task
             nowtask = itr;
-            puts("waiting...H");
+            // puts("waiting...H");
             if(nowtask->tq==10) {
                 setitimer(ITIMER_REAL, &tick, NULL);
             } else {
@@ -262,7 +260,7 @@ void simulator()
         prevnowtask = itr;
         if(itr->state == TASK_WAITING) {    //found one waiting task
             nowtask = itr;
-            puts("waiting...L");
+            // puts("waiting...L");
             if(nowtask->tq==10) {
                 setitimer(ITIMER_REAL, &tick, NULL);
             } else {
@@ -272,7 +270,7 @@ void simulator()
         }
         itr = itr->schedulenext;
     }
-    puts("all done.");  //all task terminated
+    // puts("all done.");  //all task terminated
     setcontext(&Shell);
     return;
 }
@@ -280,15 +278,22 @@ void simulator()
 void shell()
 {
     setitimer(ITIMER_REAL, &stop, NULL);
-    puts("[shell mode]");
+    // puts("[shell mode]");
     char input[64] = "";
     usercreate = 1; //flag for priority setting
     while(fgets(input, 64, stdin) != NULL) {
         // fputs(input, stdout);
         if(strcmp(input,"start\n")==0) break;
-        if(strcmp(input,"h\n")==0) {
+        /*
+        if(strcmp(input,"n\n")==0) { // print nowtask
+            if(nowtask == NULL)puts("nowtask null");
+            else printf("nowtask %d %s\n",nowtask->pid,nowtask->taskname);
+        }
+        if(strcmp(input,"h\n")==0) { // print Hlist
             puts("Hlist");
-            if(Hlisthead == NULL)puts("H null");
+            if(Hlisthead == NULL)puts("Hhead null");
+            if(Hlisttail == NULL)puts("Htail null");
+            else printf("Htail %d %s\n",Hlisttail->pid,Hlisttail->taskname);
             for(Task* itr = Hlisthead; itr != NULL; itr = itr->schedulenext) {
                 printf("%d %s ",itr->pid,itr->taskname);
                 switch(itr->state) {
@@ -313,9 +318,11 @@ void shell()
             }
             continue;
         }
-        if(strcmp(input,"l\n")==0) {
+        if(strcmp(input,"l\n")==0) { //print Llist
             puts("Llist");
-            if(Llisthead == NULL)puts("L null");
+            if(Llisthead == NULL)puts("Lhead null");
+            if(Llisttail == NULL)puts("Ltail null");
+            else printf("Ltail %d %s\n",Llisttail->pid,Llisttail->taskname);
             for(Task* itr = Llisthead; itr != NULL; itr = itr->schedulenext) {
                 printf("%d %s ",itr->pid,itr->taskname);
                 switch(itr->state) {
@@ -340,6 +347,7 @@ void shell()
             }
             continue;
         }
+        */
         if(strcmp(input,"ps\n")==0) {
             for(Task* itr = pidlisthead; itr != NULL; itr = itr->pidnext) {
                 printf("%d %s ",itr->pid,itr->taskname);
@@ -405,7 +413,7 @@ void shell()
             // strcat(taskbuff,remain);
             int pid = hw_task_create(remain);
             if(pid == -1) {
-                puts("no such task");
+                // puts("no such task");
                 continue;
             }
             int priority = 0, largeTQflag = 0;
@@ -484,32 +492,60 @@ void finish()
     else if(Llisthead == nowtask)
         Llisthead = nowtask->schedulenext;
     else {
-        Task* prev, *itr;
+        Task* prev=NULL, *itr;
         if(nowtask->priority == 'H') {
-            prev = Hlisthead;
             itr = Hlisthead;
         } else {
-            prev = Llisthead;
             itr = Llisthead;
         }
         while(itr!=NULL) {
-            prev = itr;
-            itr = itr->schedulenext;
-            if(itr->pid==pid) {
+            if(itr->pid==pid && prev!=NULL) {
                 prev->schedulenext = itr->schedulenext;
                 itr->schedulenext = NULL;
                 break;
             }
+            prev = itr;
+            itr = itr->schedulenext;
+        }
+    }
+    if(Hlisttail == nowtask) {
+        Task* itr = Hlisthead;
+        if(Hlisthead!=NULL) {
+            while(itr->schedulenext!=NULL) {
+                itr=itr->schedulenext;
+            };
+            Hlisttail = itr;
+        } else {
+            Hlisttail = NULL;
+        }
+    } else if(Llisttail == nowtask) {
+        Task* itr = Llisthead;
+        if(Llisthead!=NULL) {
+            while(itr->schedulenext!=NULL) {
+                itr=itr->schedulenext;
+            };
+            Llisttail = itr;
+            // printf("AAA%d %s\n",Llisttail->pid, Llisttail->taskname);
+        } else {
+            Llisttail = NULL;
         }
     }
     setcontext(&Simulator);
     return;
 }
 
+// add task1 -p H -t L
+// add task3
+// add task4
+// add task5
+// add task6 -p H
+// start
+
+
 void pause(int signal)
 {
     setitimer(ITIMER_REAL, &stop, NULL);
-    puts("\npaused.");
+    // puts("\npaused.");
 
     if(nowtask->state == TASK_RUNNING) {	//pause now running task
         // printf("stop %d %s back to shell\n", nowtask->pid, nowtask->name);
@@ -535,7 +571,7 @@ void ticktock(int signal)
         if(itr->state == TASK_WAITING) {    //decrease suspend time
             itr->suspendtime = itr->suspendtime - nowtask->tq;
             if(itr->suspendtime <= 0) {
-                printf("pid %d %s woke up.\n", itr->pid, itr->taskname);
+                // printf("pid %d %s woke up.\n", itr->pid, itr->taskname);
                 itr->state = TASK_READY;
                 itr->suspendtime = 0;
             }
@@ -551,7 +587,7 @@ void ticktock(int signal)
         if(itr->state == TASK_WAITING) {    //decrease suspend time
             itr->suspendtime = itr->suspendtime - nowtask->tq;
             if(itr->suspendtime <= 0) {
-                printf("%d %s woke up.\n", itr->pid, itr->taskname);
+                // printf("%d %s woke up.\n", itr->pid, itr->taskname);
                 itr->state = TASK_READY;
                 itr->suspendtime = 0;
             }
@@ -585,7 +621,7 @@ void ticktock(int signal)
                 Llisttail = nowtask;
                 nowtask->schedulenext = NULL;
             }
-            printf("stop %d %s back to simulator\n", nowtask->pid, nowtask->taskname);
+            // printf("stop %d %s back to simulator\n", nowtask->pid, nowtask->taskname);
             swapcontext(&(nowtask->context), &Simulator);   //now:READY
             return;
         }
